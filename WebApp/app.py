@@ -1,6 +1,7 @@
 from pickle import FALSE, TRUE
 from flask import Flask,render_template,Response
 import cv2
+import os
 import mediapipe as mp
 import numpy as np
 from keras.models import load_model
@@ -10,6 +11,9 @@ camera=cv2.VideoCapture(0)
 
 global Str
 Str = ""
+
+global createVariable
+createVariable=""
 
 def generate_frames():
     global Str
@@ -111,6 +115,71 @@ def extract_keypoints(results):
     rh = np.array([[res.x, res.y, res.z] for res in results.right_hand_landmarks.landmark]).flatten() if results.right_hand_landmarks else np.zeros(21*3)
     return rh
 
+def generate_frames_for_create():
+    mp_holistic = mp.solutions.holistic # Holistic model
+    mp_drawing = mp.solutions.drawing_utils # Drawing utilities
+    action="Temp"
+    DATA_PATH=os.path.join('MP_DATA')
+    holistic=mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    no_sequences=20
+    flag=FALSE
+    for sequence in range(no_sequences):
+        try: 
+            os.makedirs(os.path.join(DATA_PATH, action, str(sequence)))
+        except:
+            pass
+
+
+    for frame_num in range(no_sequences):
+                #print(no_sequences)
+                print(frame_num)
+
+                # Read feed
+                ret, frame = camera.read()
+
+                # Make detections
+                image, results = mediapipe_detection(frame, holistic)
+#                 print(results)
+
+                # Draw landmarks
+                draw_styled_landmarks(image, results)
+                
+                # NEW Apply wait logic
+                if frame_num == 0: 
+                    cv2.putText(image, 'STARTING COLLECTION', (120,200), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255, 0), 4, cv2.LINE_AA)
+                    cv2.putText(image, 'Collecting frames for {} Video Number {}'.format(action, frame_num), (15,12), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+                    # Show to screen
+                    cv2.imshow('OpenCV Feed', image)
+                    cv2.waitKey(5000)
+                else: 
+                    # Show to screen
+                    cv2.imshow('OpenCV Feed', image)
+                    cv2.waitKey(5000)
+                
+                # NEW Export keypoints
+                keypoints = extract_keypoints(results)
+               
+                npy_path = os.path.join(DATA_PATH, action, str(frame_num),str(frame_num))
+                print(npy_path)
+                #print("saved for {}",no_sequences)
+                np.save(npy_path, keypoints)
+                
+                # Break gracefully
+                if cv2.waitKey(10) & 0xFF == ord('q'):
+                    break
+
+                ret,buffer=cv2.imencode('.jpg',image)
+                image=buffer.tobytes()
+                #cv2.putText(frame, sign)
+                yield(b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + image + b'\r\n')
+                                
+    #camera.release()
+    #cv2.destroyAllWindows()
+    
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -142,6 +211,9 @@ def Export():
 def video():
     return Response(generate_frames(),mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/createGesture')
+def createGesture():
+    return Response(generate_frames_for_create(),mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__=="__main__":
     app.run(debug=True)
