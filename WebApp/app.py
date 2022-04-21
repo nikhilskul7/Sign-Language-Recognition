@@ -2,9 +2,14 @@ from pickle import FALSE, TRUE
 from flask import Flask,render_template,Response
 import cv2
 import os
+import csv
+import copy
 import mediapipe as mp
 import numpy as np
 from keras.models import load_model
+from model import KeyPointClassifier
+from app_files import calc_landmark_list, draw_info_text, draw_landmarks, get_args, pre_process_landmark
+
 
 app=Flask(__name__)
 camera=cv2.VideoCapture(0)
@@ -16,59 +21,72 @@ global createVariable
 createVariable=""
 
 def generate_frames():
-    global Str
-    sequence=[]
-    flag=FALSE
-    model=load_model('action.h5')
-    actions=['A', 'B','C','D','E']
-    signStr=" "
-       
-    
-    font                   = cv2.FONT_HERSHEY_SIMPLEX
-    bottomLeftCornerOfText = (10,50)
-    fontScale              = 1
-    fontColor              = (255,255,255)
-    thickness              = 1
-    lineType               = 2
+    args = get_args()
+
+    cap_device = args.device
+    cap_width = args.width
+    cap_height = args.height
+
+    use_static_image_mode = args.use_static_image_mode
+    min_detection_confidence = args.min_detection_confidence
+    min_tracking_confidence = args.min_tracking_confidence
+
+    cap = camera
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, cap_width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cap_height)
+
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(
+        static_image_mode=use_static_image_mode,
+        max_num_hands=1,
+        min_detection_confidence=min_detection_confidence,
+        min_tracking_confidence=min_tracking_confidence,
+    )
+
+    keypoint_classifier = KeyPointClassifier()
+    with open('model/keypoint_classifier/keypoint_classifier_label.csv', encoding='utf-8-sig') as f:
+        keypoint_classifier_labels = csv.reader(f)
+        keypoint_classifier_labels = [
+            row[0] for row in keypoint_classifier_labels
+        ]
     while True:
-        
-        mp_holistic = mp.solutions.holistic # Holistic model
-        mp_drawing = mp.solutions.drawing_utils # Drawing utilities
-        ## read the camera frame
-        success,frame=camera.read()
-        holistic=mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-       
-        #sequence=[]
-       
-        image, results = mediapipe_detection(frame, holistic)
-        draw_styled_landmarks(image, results)
-        keypoints = extract_keypoints(results)
-        sequence.append(keypoints)
-        sequence = sequence[-20:]
-        #cv2.putText(image,"actions[np.argmax(sign)]", bottomLeftCornerOfText, font, fontScale,fontColor,thickness,lineType)
-        
-        if len(sequence)==20:
-            sign = model.predict(np.expand_dims(sequence, axis=0))[0]
-            print(actions[np.argmax(sign)])
-            signStr+=' '
-            signStr+=str(actions[np.argmax(sign)])
-            Str = signStr
-            #print('here')
-            sequence=[]
-            flag=TRUE
+        key = cv2.waitKey(10)
+        if key == 27:  # ESC
+            break
 
+        ret, image = cap.read()
+        if not ret:
+            break
+        image = cv2.flip(image, 1) 
+        debug_image = copy.deepcopy(image)
+        # print(debug_image.shape)
+        # cv.imshow("debug_image",debug_image)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        cv2.putText(image,signStr, bottomLeftCornerOfText, font, fontScale,fontColor,thickness,lineType)
-            
-        if not flag:
-            continue
-        else:
-            ret,buffer=cv2.imencode('.jpg',image)
-            image=buffer.tobytes()
-        #cv2.putText(frame, sign)
+        image.flags.writeable = False
+        results = hands.process(image)
+        image.flags.writeable = True
+
+        if results.multi_hand_landmarks is not None:
+            for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+                landmark_list = calc_landmark_list(debug_image, hand_landmarks)
+                pre_processed_landmark_list = pre_process_landmark(landmark_list)
+
+                hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
+
+                debug_image = draw_landmarks(debug_image, landmark_list)
+                #print(keypoint_classifier_labels[hand_sign_id])
+                debug_image = draw_info_text(
+                    debug_image,
+                    handedness,
+                    keypoint_classifier_labels[hand_sign_id])
+        ret,buffer=cv2.imencode('.jpg',debug_image)
+        debug_image=buffer.tobytes()
         yield(b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + image + b'\r\n')
+                   b'Content-Type: image/jpeg\r\n\r\n' + debug_image + b'\r\n')
 
+        #cv2.putText(frame, sign)
+    
 def draw_styled_landmarks(image, results):
     mp_holistic = mp.solutions.holistic # Holistic model
     mp_drawing = mp.solutions.drawing_utils # Drawing utilities
@@ -92,13 +110,13 @@ def draw_styled_landmarks(image, results):
                              mp_drawing.DrawingSpec(color=(245,117,66), thickness=2, circle_radius=4), 
                              mp_drawing.DrawingSpec(color=(245,66,230), thickness=2, circle_radius=2)
                              )                   
-def draw_landmarks(image, results):
-    mp_holistic = mp.solutions.holistic # Holistic model
-    mp_drawing = mp.solutions.drawing_utils # Drawing utilities
+#def draw_landmarks(image, results):
+  #  mp_holistic = mp.solutions.holistic # Holistic model
+  #  mp_drawing = mp.solutions.drawing_utils # Drawing utilities
     # mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION) # Draw face connections
     # mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS) # Draw pose connections
-    mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS) # Draw left hand connections
-    mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS) # Draw right hand connections
+    #mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS) # Draw left hand connections
+  #  mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS) # Draw right hand connections
 
 def mediapipe_detection(image, model):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # COLOR CONVERSION BGR 2 RGB
