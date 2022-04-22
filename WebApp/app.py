@@ -12,15 +12,19 @@ from app_files import calc_landmark_list, draw_info_text, draw_landmarks, get_ar
 
 
 app=Flask(__name__)
-camera=cv2.VideoCapture(0)
+
 
 global Str
 Str = ""
 
-global createVariable
-createVariable=""
+#global GlobalStr
+GlobalStr = ""
+
+global cvVariable
+cvVariable=""
 
 def generate_frames():
+    camera=cv2.VideoCapture(0)
     args = get_args()
 
     cap_device = args.device
@@ -76,15 +80,17 @@ def generate_frames():
 
                 debug_image = draw_landmarks(debug_image, landmark_list)
                 #print(keypoint_classifier_labels[hand_sign_id])
+                global cvVariable
+                cvVariable=keypoint_classifier_labels[hand_sign_id]
                 debug_image = draw_info_text(
                     debug_image,
                     handedness,
-                    keypoint_classifier_labels[hand_sign_id])
+                    cvVariable)
         ret,buffer=cv2.imencode('.jpg',debug_image)
         debug_image=buffer.tobytes()
         yield(b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + debug_image + b'\r\n')
-
+    del(camera)
         #cv2.putText(frame, sign)
     
 def draw_styled_landmarks(image, results):
@@ -134,6 +140,7 @@ def extract_keypoints(results):
     return rh
 
 def generate_frames_for_create():
+    camera=cv2.VideoCapture(0)
     mp_holistic = mp.solutions.holistic # Holistic model
     mp_drawing = mp.solutions.drawing_utils # Drawing utilities
     action="Temp"
@@ -193,10 +200,24 @@ def generate_frames_for_create():
                 #cv2.putText(frame, sign)
                 yield(b'--frame\r\n'
                         b'Content-Type: image/jpeg\r\n\r\n' + image + b'\r\n')
-                                
+    del(camera)                            
     #camera.release()
     #cv2.destroyAllWindows()
-    
+@app.route('/addGlobalVariable')   
+def addGlobalVariable():
+    global GlobalStr
+    GlobalStr+=cvVariable
+    #print("calleddd")
+    #print(GlobalStr)
+    return TRUE
+
+@app.route('/addGlobalVariable')   
+def getGlobalVariable():
+    global GlobalStr
+    #GlobalStr+=cvVariable
+    #print("calleddd")
+    #print(GlobalStr)
+    return GlobalStr
 
 @app.route('/')
 def index():
@@ -204,7 +225,8 @@ def index():
 
 @app.route('/vid')
 def vid():
-    return render_template('vid.html')
+    print(GlobalStr)
+    return render_template('vid.html',value=GlobalStr)
 
 @app.route('/create')
 def create():
