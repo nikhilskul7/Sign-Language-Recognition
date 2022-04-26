@@ -11,11 +11,11 @@
                 <div class="divider-custom-line"></div>
                 <div class="divider-custom-icon"><i class="fas fa-star"></i></div>
                 <div class="divider-custom-line"></div>
-            </div>
-            <center><img src="{{ url_for('createGesture') }}" width="50%"/></center>
-            <a class="nav-link py-3 px-0 px-lg-3 rounded" href="{{ url_for('index') }}">Create</a></li>
-            
+                <form action="{{ url_for("create")}}" method="post">
+                    <label for="Gesture">Name of Gesture:</label>
+                    <input type="text" id="Gesture" name="Gesture" placeholder="Gesture">
+                    <label for="Number">Number:</label>
+                    <input type="Number" id="Number" name="Number" placeholder="Number">
+                    <button type="submit">Submit</button>
         </div>
     </section>
-
-  

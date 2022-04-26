@@ -1,5 +1,5 @@
 from pickle import FALSE, TRUE
-from flask import Flask,render_template,Response
+from flask import Flask,render_template,Response,request
 import cv2
 import os
 import csv
@@ -9,10 +9,16 @@ import numpy as np
 from keras.models import load_model
 from model import KeyPointClassifier
 from app_files import calc_landmark_list, draw_info_text, draw_landmarks, get_args, pre_process_landmark
-
+from logging_csv import logging_csv
 
 app=Flask(__name__)
 
+global createVariable
+createVariable=""
+
+
+global numberCSV
+numberCSV=30
 
 global Str
 Str = ""
@@ -140,66 +146,73 @@ def extract_keypoints(results):
     return rh
 
 def generate_frames_for_create():
+
     camera=cv2.VideoCapture(0)
-    mp_holistic = mp.solutions.holistic # Holistic model
-    mp_drawing = mp.solutions.drawing_utils # Drawing utilities
-    action="Temp"
-    DATA_PATH=os.path.join('MP_DATA')
-    holistic=mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-    no_sequences=20
-    flag=FALSE
-    for sequence in range(no_sequences):
-        try: 
-            os.makedirs(os.path.join(DATA_PATH, action, str(sequence)))
-        except:
-            pass
+    args = get_args()
 
+    cap_device = args.device
+    cap_width = args.width
+    cap_height = args.height
 
-    for frame_num in range(no_sequences):
-                #print(no_sequences)
-                print(frame_num)
+    use_static_image_mode = args.use_static_image_mode
+    min_detection_confidence = args.min_detection_confidence
+    min_tracking_confidence = args.min_tracking_confidence
 
-                # Read feed
-                ret, frame = camera.read()
+    cap = camera
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, cap_width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cap_height)
 
-                # Make detections
-                image, results = mediapipe_detection(frame, holistic)
-#                 print(results)
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(
+        static_image_mode=use_static_image_mode,
+        max_num_hands=1,
+        min_detection_confidence=min_detection_confidence,
+        min_tracking_confidence=min_tracking_confidence,
+    )
 
-                # Draw landmarks
-                draw_styled_landmarks(image, results)
-                
-                # NEW Apply wait logic
-                if frame_num == 0: 
-                    cv2.putText(image, 'STARTING COLLECTION', (120,200), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255, 0), 4, cv2.LINE_AA)
-                    cv2.putText(image, 'Collecting frames for {} Video Number {}'.format(action, frame_num), (15,12), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
-                    # Show to screen
-                    cv2.imshow('OpenCV Feed', image)
-                    cv2.waitKey(5000)
-                else: 
-                    # Show to screen
-                    cv2.imshow('OpenCV Feed', image)
-                    cv2.waitKey(5000)
-                
-                # NEW Export keypoints
-                keypoints = extract_keypoints(results)
-               
-                npy_path = os.path.join(DATA_PATH, action, str(frame_num),str(frame_num))
-                print(npy_path)
-                #print("saved for {}",no_sequences)
-                np.save(npy_path, keypoints)
-                
+    mode = 1
+    number =29
+    
+    while True:
+        key = cv2.waitKey(10)
+        if key == 27:  # ESC
+            break
+        
+        if 48 == key:
+            number = 0
+            
+        ret, image = cap.read()
+
+        if not ret:
+            break
+        image = cv2.flip(image, 1)
+        debug_image = copy.deepcopy(image)        
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image.flags.writeable = False
+        results = hands.process(image)
+        image.flags.writeable = True
+        #cv.imshow("results",image)
+        if results.multi_hand_landmarks is not None:
+            for hand_landmarks in results.multi_hand_landmarks :                               
+                landmark_list = calc_landmark_list(debug_image, hand_landmarks)
+                pre_processed_landmark_list = pre_process_landmark(landmark_list)
+                #print(pre_processed_landmark_list)
+                #print(mode)
+                #print(number)
+                logging_csv(numberCSV, mode, pre_processed_landmark_list)
+                # logging_csv(number, mode, landmark_list)
+                debug_image = draw_landmarks(debug_image, landmark_list)
+                info_text="Press key 0 to capture"
+                cv2.putText(debug_image, info_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (196, 161, 33), 1, cv2.LINE_AA)
                 # Break gracefully
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     break
 
-                ret,buffer=cv2.imencode('.jpg',image)
-                image=buffer.tobytes()
+        ret,buffer=cv2.imencode('.jpg',debug_image)
+        debug_image=buffer.tobytes()
                 #cv2.putText(frame, sign)
-                yield(b'--frame\r\n'
-                        b'Content-Type: image/jpeg\r\n\r\n' + image + b'\r\n')
+        yield(b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + debug_image + b'\r\n')
     del(camera)                            
     #camera.release()
     #cv2.destroyAllWindows()
@@ -225,12 +238,27 @@ def index():
 
 @app.route('/vid')
 def vid():
-    print(GlobalStr)
+    #print(GlobalStr)
     return render_template('vid.html',value=GlobalStr)
 
-@app.route('/create')
+@app.route('/create', methods =["GET", "POST"])
 def create():
-    return render_template('create.html')
+    if request.method == "POST":
+        Gesture = request.form.get('Gesture', '')
+        Number = request.form.get('Number', '')
+        global createVariable
+        createVariable=Gesture
+        global numberCSV
+        numberCSV=Number
+        csv_path = 'model/keypoint_classifier/keypointTempAppOrg.csv'
+        with open(csv_path, 'a', newline="") as f:
+
+            #print(landmark_list)
+            writer = csv.writer(f)
+            writer.writerow([createVariable])
+        return render_template('create.html')
+
+    return render_template('createVariable.html')
 
 @app.route('/exp')
 def exp():
