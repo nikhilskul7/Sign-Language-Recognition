@@ -1,4 +1,5 @@
 import csv
+import pandas as pd
 
 def logging_csv(number, mode, landmark_list):
     #print(mode)
@@ -12,3 +13,11 @@ def logging_csv(number, mode, landmark_list):
             writer = csv.writer(f)
             writer.writerow([number, *landmark_list])
     return
+
+def getLastRowValue():
+    
+    
+    df = pd.read_csv('model/keypoint_classifier/keypoint.csv')
+    last_number=df.iloc[-1,0]
+    print(last_number)
+    return last_number

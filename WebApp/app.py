@@ -7,9 +7,10 @@ import copy
 import mediapipe as mp
 import numpy as np
 from keras.models import load_model
+from app_files.main.draw import draw_info_text_word
 from model import KeyPointClassifier
-from app_files import calc_landmark_list, draw_info_text, draw_landmarks, get_args, pre_process_landmark
-from logging_csv import logging_csv
+from app_files import calc_landmark_list, draw_info_text, draw_info_text_word, draw_landmarks, get_args, pre_process_landmark
+from logging_csv import logging_csv,getLastRowValue
 
 app=Flask(__name__)
 
@@ -92,6 +93,10 @@ def generate_frames():
                     debug_image,
                     handedness,
                     cvVariable)
+                debug_image = draw_info_text_word(
+                    debug_image,
+                    handedness,
+                    getGlobalVariable())
         ret,buffer=cv2.imencode('.jpg',debug_image)
         debug_image=buffer.tobytes()
         yield(b'--frame\r\n'
@@ -224,6 +229,15 @@ def addGlobalVariable():
     #print(GlobalStr)
     return TRUE
 
+@app.route('/removeGlobalVariable')   
+def removeGlobalVariable():
+    global GlobalStr
+    GlobalStr = GlobalStr[:-1]
+    #print("calleddd")
+    #print(GlobalStr)
+    return TRUE
+
+
 @app.route('/addGlobalVariable')   
 def getGlobalVariable():
     global GlobalStr
@@ -245,7 +259,8 @@ def vid():
 def create():
     if request.method == "POST":
         Gesture = request.form.get('Gesture', '')
-        Number = request.form.get('Number', '')
+        Number = getLastRowValue()
+        Number+=1
         global createVariable
         createVariable=Gesture
         global numberCSV

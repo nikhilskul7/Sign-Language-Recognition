@@ -35,7 +35,10 @@
                 <!-- <i class="fas fa-xmark fa-fw"></i> -->
                 Add letter
             </button>
-            <h1 style="color:blue;">{{ value }}</h1>
+            <button class="btn btn-primary" data-bs-dismiss="modal" id = "mybuttonRemove">
+                <!-- <i class="fas fa-xmark fa-fw"></i> -->
+                Remove letter
+            </button>
             
         </div>
     </section>
@@ -51,5 +54,13 @@
             return false; 
         }); 
     }); 
-    
+    $(function() { 
+        $("#mybuttonRemove").click(function (event) { 
+            $.getJSON('/removeGlobalVariable', { },
+                function(data) { 
+                        
+                }); 
+            return false; 
+        }); 
+    }); 
     </script> 
