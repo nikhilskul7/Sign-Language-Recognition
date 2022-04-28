@@ -224,15 +224,22 @@ def generate_frames_for_create():
 @app.route('/addGlobalVariable')   
 def addGlobalVariable():
     global GlobalStr
-    GlobalStr+=cvVariable
-    #print("calleddd")
-    #print(GlobalStr)
+    if(cvVariable!=' '):
+        GlobalStr+=cvVariable
     return TRUE
 
 @app.route('/removeGlobalVariable')   
 def removeGlobalVariable():
     global GlobalStr
     GlobalStr = GlobalStr[:-1]
+    #print("calleddd")
+    #print(GlobalStr)
+    return TRUE
+
+@app.route('/addSpaceGlobalVariable')   
+def addSpaceGlobalVariable():
+    global GlobalStr
+    GlobalStr+=" "
     #print("calleddd")
     #print(GlobalStr)
     return TRUE
@@ -279,13 +286,13 @@ def create():
 def exp():
     global Str
     #Str="Lorem ipsum dolor sit amet, consectetur adipisicing elit. Mollitia neque assumenda ipsam nihil, molestias magnam, recusandae quos quis inventore quisquam velit asperiores, vitae? Reprehenderit soluta, eos quod consequuntur itaque. Nam."
-    return render_template('exp.html',value=Str)
+    return render_template('exp.html',value=GlobalStr)
 
 @app.route('/export')
 def Export():
-    global Str
+    global GlobalStr
     f = open("SLR.txt", 'w')
-    f.write(Str)
+    f.write(GlobalStr)
     f.close()
     print("File saved as SLR.txt!!")
     return "True"

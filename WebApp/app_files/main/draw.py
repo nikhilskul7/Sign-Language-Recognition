@@ -203,5 +203,5 @@ def draw_info_text_word(image, handedness, globalVariableWord):
     if globalVariableWord != "":
         info_text = "Current Word" + ':' + globalVariableWord
 
-    cv.putText(image, info_text, (30, 90), cv.FONT_HERSHEY_SIMPLEX, 1.0, (196, 255, 255), 2, cv.LINE_AA)
+    cv.putText(image, info_text, (50, 110), cv.FONT_HERSHEY_SIMPLEX, 1.0, (196, 255, 255), 2, cv.LINE_AA)
     return image
