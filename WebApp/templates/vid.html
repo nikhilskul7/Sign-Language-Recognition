@@ -30,7 +30,8 @@
                 <div class="divider-custom-icon"><i class="fas fa-star"></i></div>
                 <div class="divider-custom-line"></div>
             </div>
-            <center><img src="{{ url_for('video') }}" width="50%"/></center>
+            <center><img src="{{ url_for('video') }}" width="50%"/>
+                <br>
             <button class="btn btn-primary" data-bs-dismiss="modal" id = "mybutton">
                 <!-- <i class="fas fa-xmark fa-fw"></i> -->
                 Add letter
@@ -43,7 +44,7 @@
                 <!-- <i class="fas fa-xmark fa-fw"></i> -->
                 Add space character
             </button>
-            
+        </center>
         </div>
     </section>
 
@@ -53,7 +54,7 @@
         $("#mybutton").click(function (event) { 
             $.getJSON('/addGlobalVariable', { },
                 function(data) { 
-                        
+                        console.log("hi");
                 }); 
             return false; 
         }); 

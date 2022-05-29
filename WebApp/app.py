@@ -247,10 +247,7 @@ def addSpaceGlobalVariable():
 
 @app.route('/addGlobalVariable')   
 def getGlobalVariable():
-    global GlobalStr
-    #GlobalStr+=cvVariable
-    #print("calleddd")
-    #print(GlobalStr)
+    global GlobalStr 
     return GlobalStr
 
 @app.route('/')
