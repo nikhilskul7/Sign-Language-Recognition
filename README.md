@@ -5,6 +5,10 @@
 
 This repository contains the code and resources for a Sign Language Recognition project. The project aims to develop a system that recognizes and interprets sign language gestures using computer vision and machine learning techniques.
 
+
+## Demo
+[Click here to watch the video](Presentation.mp4)
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
