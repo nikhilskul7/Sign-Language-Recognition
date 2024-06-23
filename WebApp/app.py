@@ -32,16 +32,20 @@ global cvVariable
 cvVariable=""
 
 def generate_frames():
-    camera=cv2.VideoCapture(0)
-    args = get_args()
+   
+    
+    use_static_image_mode = os.getenv('USE_STATIC_IMAGE_MODE', 'False').lower() in ['true', '1', 't', 'y', 'yes']
 
-    cap_device = args.device
-    cap_width = args.width
-    cap_height = args.height
-
-    use_static_image_mode = args.use_static_image_mode
-    min_detection_confidence = args.min_detection_confidence
-    min_tracking_confidence = args.min_tracking_confidence
+  
+    device = os.getenv('DEVICE', '/dev/video0')
+    camera=cv2.VideoCapture(device)
+    if not camera.isOpened():
+        print("Cannot open camera")
+        exit()
+    cap_width = int(os.getenv('WIDTH', 640))
+    cap_height = int(os.getenv('HEIGHT', 480))
+    min_detection_confidence = float(os.getenv('MIN_DETECTION_CONFIDENCE', 0.5))
+    min_tracking_confidence = float(os.getenv('MIN_TRACKING_CONFIDENCE', 0.5))
 
     cap = camera
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, cap_width)
