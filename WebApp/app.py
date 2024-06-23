@@ -1,7 +1,9 @@
 from pickle import FALSE, TRUE
 from flask import Flask,render_template,Response,request
 import cv2
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import csv
 import copy
 import mediapipe as mp
