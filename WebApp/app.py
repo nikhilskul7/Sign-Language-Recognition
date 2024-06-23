@@ -6,7 +6,6 @@ import csv
 import copy
 import mediapipe as mp
 import numpy as np
-from keras.models import load_model
 from app_files.main.draw import draw_info_text_word
 from model import KeyPointClassifier
 from app_files import calc_landmark_list, draw_info_text, draw_info_text_word, draw_landmarks, get_args, pre_process_landmark
